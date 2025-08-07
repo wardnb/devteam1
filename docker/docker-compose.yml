@@ -1,0 +1,178 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - devteam-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - devteam-network
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_HOST=http://ollama:11434
+      - LOG_LEVEL=INFO
+    volumes:
+      - ../workspace:/app/workspace
+      - ../logs:/app/logs
+      - ../data:/app/data
+      - ../configs:/app/configs
+    networks:
+      - devteam-network
+    command: python main.py --mode orchestrator
+
+  project-manager:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      - orchestrator
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_HOST=http://ollama:11434
+      - AGENT_ID=pm-001
+      - AGENT_TYPE=project_manager
+    volumes:
+      - ../workspace:/app/workspace
+      - ../logs:/app/logs
+    networks:
+      - devteam-network
+    command: python main.py --mode agent --type project_manager --id pm-001
+
+  developer-1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      - orchestrator
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_HOST=http://ollama:11434
+      - AGENT_ID=dev-001
+      - AGENT_TYPE=developer
+    volumes:
+      - ../workspace:/app/workspace
+      - ../logs:/app/logs
+    networks:
+      - devteam-network
+    command: python main.py --mode agent --type developer --id dev-001
+
+  developer-2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      - orchestrator
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_HOST=http://ollama:11434
+      - AGENT_ID=dev-002
+      - AGENT_TYPE=developer
+    volumes:
+      - ../workspace:/app/workspace
+      - ../logs:/app/logs
+    networks:
+      - devteam-network
+    command: python main.py --mode agent --type developer --id dev-002
+
+  tester:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      - orchestrator
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_HOST=http://ollama:11434
+      - AGENT_ID=qa-001
+      - AGENT_TYPE=tester
+    volumes:
+      - ../workspace:/app/workspace
+      - ../logs:/app/logs
+    networks:
+      - devteam-network
+    command: python main.py --mode agent --type tester --id qa-001
+
+  ui-designer:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      - orchestrator
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_HOST=http://ollama:11434
+      - AGENT_ID=ui-001
+      - AGENT_TYPE=ui_designer
+    volumes:
+      - ../workspace:/app/workspace
+      - ../logs:/app/logs
+    networks:
+      - devteam-network
+    command: python main.py --mode agent --type ui_designer --id ui-001
+
+  web-ui:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - orchestrator
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ../workspace:/app/workspace
+      - ../logs:/app/logs
+    networks:
+      - devteam-network
+    command: python -m uvicorn web_interface:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  redis_data:
+  ollama_data:
+
+networks:
+  devteam-network:
+    driver: bridge

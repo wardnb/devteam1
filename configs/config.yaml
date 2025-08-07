@@ -1,0 +1,98 @@
+system:
+  name: "Autonomous Development Team"
+  version: "1.0.0"
+  environment: "development"
+  
+llm:
+  provider: "ollama"
+  base_url: "http://localhost:11434"
+  models:
+    project_manager: "llama3.1:8b"
+    developer: "codellama:13b"
+    tester: "llama3.1:8b"
+    ui_designer: "llama3.1:8b"
+    architect: "llama3.1:8b"
+    devops: "llama3.1:8b"
+  temperature: 0.7
+  max_tokens: 4096
+  
+communication:
+  broker: "redis"
+  redis:
+    host: "localhost"
+    port: 6379
+    db: 0
+  message_queue: "celery"
+  
+orchestration:
+  max_concurrent_agents: 5
+  task_timeout: 300
+  heartbeat_interval: 10
+  
+agents:
+  project_manager:
+    enabled: true
+    container_name: "agent-pm"
+    responsibilities:
+      - "Break down project requirements"
+      - "Assign tasks to team members"
+      - "Track project progress"
+      - "Coordinate between agents"
+      
+  developer:
+    enabled: true
+    container_name: "agent-dev"
+    max_instances: 3
+    responsibilities:
+      - "Write code implementation"
+      - "Create unit tests"
+      - "Refactor existing code"
+      - "Review code from other developers"
+      
+  tester:
+    enabled: true
+    container_name: "agent-qa"
+    responsibilities:
+      - "Write test cases"
+      - "Execute tests"
+      - "Report bugs"
+      - "Validate user interfaces"
+      
+  ui_designer:
+    enabled: true
+    container_name: "agent-ui"
+    responsibilities:
+      - "Design user interfaces"
+      - "Create mockups"
+      - "Ensure UX best practices"
+      - "Validate accessibility"
+      
+  architect:
+    enabled: false
+    container_name: "agent-arch"
+    responsibilities:
+      - "Design system architecture"
+      - "Make technology decisions"
+      - "Ensure scalability"
+      
+  devops:
+    enabled: false
+    container_name: "agent-devops"
+    responsibilities:
+      - "Setup CI/CD pipelines"
+      - "Manage deployments"
+      - "Monitor system health"
+      
+recruitment:
+  enabled: true
+  auto_recruit: true
+  skill_assessment: true
+  
+persistence:
+  database: "sqlite"
+  path: "./data/devteam.db"
+  
+logging:
+  level: "INFO"
+  format: "json"
+  output: "./logs/devteam.log"
